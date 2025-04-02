@@ -138,7 +138,9 @@
 
     function downloadPDF() {
       import('https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js').then(() => {
-        const element = document.getElementById('seatGrid');
+        const element = document.createElement('div');
+        const clone = document.getElementById('seatGrid').cloneNode(true);
+        element.appendChild(clone);
         const opt = {
           margin: 0.5,
           filename: '자리배치.pdf',

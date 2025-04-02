@@ -160,14 +160,17 @@
     h1 {
       text-align: center;
       color: #2b6c4f;
+      margin-bottom: 10px;
     }
     .container {
       display: flex;
       gap: 10cm;
       align-items: flex-start;
+      margin-top: -50px;
     }
     .left-panel {
       width: 300px;
+      margin-top: -50px;
     }
     .left-panel textarea, .left-panel input, .left-panel select, .left-panel button {
       width: 100%;
@@ -206,8 +209,11 @@
     .footer {
       text-align: center;
       font-size: 12px;
-      margin-top: 40px;
+      margin-top: -35px;
       color: #555;
+      position: absolute;
+      left: 50%;
+      transform: translateX(110px);
     }
     .instruction {
       background: #f0e0b0;
@@ -219,7 +225,7 @@
   </style>
 </head>
 <body>
-  <h1>랜덤 자리바꾸기</h1>
+  <h1>랜덤 자리바꾸기 <span class="footer">Made by 조영건</span></h1>
   <div class="container">
     <div class="left-panel">
       <label>학생 이름 입력 (쉼표 또는 줄바꿈):</label>
@@ -256,6 +262,5 @@
 
     <div id="seatGrid"></div>
   </div>
-  <div class="footer">Made by 조영건</div>
 </body>
 </html>

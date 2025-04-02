@@ -148,7 +148,7 @@
     }
     .container {
       display: flex;
-      gap: 30px;
+      gap: 10cm;
     }
     .left-panel {
       width: 300px;
@@ -193,6 +193,13 @@
       margin-top: 40px;
       color: #555;
     }
+    .instruction {
+      background: #f0e0b0;
+      padding: 15px;
+      font-size: 14px;
+      line-height: 1.6;
+      width: 500px;
+    }
   </style>
 </head>
 <body>
@@ -220,6 +227,17 @@
     </div>
 
     <div id="seatGrid"></div>
+
+    <div class="instruction">
+      <strong>사용 설명서</strong><br>
+      1. 학생 이름을 쉼표 또는 줄바꿈을 통해 입력합니다.<br>
+      2. 행 수와 열 수를 입력합니다.<br>
+      3. 맨 뒷자리를 왼쪽부터 채울지, 오른쪽부터 채울지 입력합니다.<br>
+      4. 자리 배치를 눌러 랜덤으로 배치합니다.(특정 자리를 원하는 학생이 있으면 학생 자리를 클릭해 학생 이름 입력이 가능합니다.<br>
+      5. 배치를 완성한 후 자리 저장을 누르면 인증 코드가 부여됩니다.<br>
+      6. 부여된 인증코드를 다음번에 또 입력하면 학생 이름을 비롯한 저장된 정보가 뜹니다.<br>
+      7. 이를 활용해 다음 번 자리 배치를 할 때에 자리 불러오기 - 인증 코드만 입력해 저장된 데이터를 불러옵니다.
+    </div>
   </div>
   <div class="footer">Made by 조영건</div>
 </body>

@@ -42,21 +42,13 @@
       background-color: #ffc;
       font-weight: bold;
     }
-    .seat img {
-      width: 30px;
-      height: 30px;
-      position: absolute;
-      top: -15px;
-      right: -15px;
-      border-radius: 50%;
-    }
-    .desk {
-      grid-column: span 2;
-      height: 60px;
-      background-image: url('https://cdn-icons-png.flaticon.com/512/167/167707.png');
-      background-size: cover;
-      background-position: center;
-      border-radius: 12px;
+    .footer-label {
+      grid-column: span 6;
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      padding: 10px;
+      color: #000;
     }
   </style>
 </head>
@@ -79,6 +71,7 @@
     <button onclick="assignSeats()">자리 배치</button>
     <button onclick="saveNames()">이름 저장</button>
     <button onclick="loadNames()">불러오기</button>
+    <input id="loadKey" type="text" placeholder="불러올 코드 입력" style="margin-top:10px; width: 200px;" />
   </div>
 
   <div class="seat-section">
@@ -101,16 +94,28 @@
       });
     });
 
+    function generateKey() {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let key = '';
+      for (let i = 0; i < 6; i++) key += chars[Math.floor(Math.random() * chars.length)];
+      return key;
+    }
+
     function saveNames() {
       const raw = document.getElementById('nameInput').value;
-      localStorage.setItem('savedNames', raw);
-      alert('이름 저장 완료');
+      const key = generateKey();
+      localStorage.setItem(`names_${key}`, raw);
+      alert(`이름이 저장되었습니다. 불러오기 코드: ${key}`);
     }
 
     function loadNames() {
-      const raw = localStorage.getItem('savedNames');
+      const key = document.getElementById('loadKey').value.trim();
+      const raw = localStorage.getItem(`names_${key}`);
       if (raw) {
         document.getElementById('nameInput').value = raw;
+        alert(`불러오기 완료: ${key}`);
+      } else {
+        alert('해당 코드로 저장된 데이터가 없습니다.');
       }
     }
 
@@ -151,14 +156,6 @@
           const div = document.createElement('div');
           const key = `${i}-${j}`;
 
-          if (i === 0 && j === 2) {
-            const desk = document.createElement('div');
-            desk.className = 'desk';
-            desk.style.gridColumn = 'span 2';
-            gridContainer.appendChild(desk);
-            j++; continue;
-          }
-
           div.className = 'seat';
           if (fixedSeats[key]) div.classList.add('fixed');
           const name = grid[i][j];
@@ -190,6 +187,11 @@
           gridContainer.appendChild(div);
         }
       }
+
+      const deskLabel = document.createElement('div');
+      deskLabel.className = 'footer-label';
+      deskLabel.textContent = '교탁';
+      gridContainer.appendChild(deskLabel);
     }
 
     function shuffleArray(arr) {

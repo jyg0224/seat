@@ -28,6 +28,7 @@
       document.getElementById('saveBtn').addEventListener('click', saveToFirebase);
       document.getElementById('loadBtn').addEventListener('click', loadFromFirebase);
       document.getElementById('assignBtn').addEventListener('click', assignSeats);
+      document.getElementById('pdfBtn').addEventListener('click', downloadPDF);
     }
 
     function generateCode() {
@@ -134,6 +135,10 @@
         [arr[i], arr[j]] = [arr[j], arr[i]];
       }
     }
+
+    function downloadPDF() {
+      window.print();
+    }
   </script>
   <style>
     body {
@@ -149,6 +154,7 @@
     .container {
       display: flex;
       gap: 10cm;
+      align-items: flex-start;
     }
     .left-panel {
       width: 300px;
@@ -224,6 +230,7 @@
       <button id="assignBtn">자리 배치</button>
       <button id="saveBtn">자리 저장 (인증코드 생성)</button>
       <button id="loadBtn">자리 불러오기</button>
+      <button id="pdfBtn">PDF 저장</button>
     </div>
 
     <div id="seatGrid"></div>

@@ -4,42 +4,62 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>자리바꾸기 웹앱</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background-color: #e6f0ff;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom, #c8f7c5, #e6fff3);
       padding: 20px;
     }
     h1 {
       text-align: center;
+      color: #2b6c4f;
     }
     .input-section, .seat-section {
-      margin: 20px 0;
+      margin: 20px auto;
+      max-width: 800px;
     }
-    textarea, input[type=number], input[type=text] {
+    textarea, input[type=number], input[type=text], select {
       width: 100%;
       margin-bottom: 10px;
+      padding: 8px;
+      border: 1px solid #a8d5ba;
+      border-radius: 6px;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      background-color: #56ba89;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #3fa574;
     }
     .seat-grid {
       display: grid;
-      gap: 8px;
+      gap: 10px;
       justify-content: center;
       margin-top: 20px;
     }
     .seat {
       width: 80px;
       height: 60px;
-      background-color: #cce0ff;
+      background-color: #d4f4dd;
       display: flex;
       justify-content: center;
       align-items: center;
-      border: 2px solid #6699cc;
+      border: 2px solid #6fcf97;
       border-radius: 8px;
       position: relative;
       cursor: pointer;
+      font-weight: 500;
     }
     .seat.fixed {
-      background-color: #ffc;
+      background-color: #f9fcb3;
       font-weight: bold;
     }
     .footer-label {
@@ -47,8 +67,12 @@
       text-align: center;
       font-size: 24px;
       font-weight: bold;
-      padding: 10px;
-      color: #000;
+      color: #2b6c4f;
+    }
+    .pdf-options {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -65,13 +89,24 @@
     <label>열 수:</label>
     <input type="number" id="colCount" value="6" />
 
+    <label>뒷줄 채우는 방향:</label>
+    <select id="backDirection">
+      <option value="left">왼쪽부터</option>
+      <option value="right">오른쪽부터</option>
+    </select>
+
     <label>학생 이미지 업로드 (파일명은 이름과 일치):</label>
     <input type="file" id="imageUpload" multiple accept="image/*" />
 
     <button onclick="assignSeats()">자리 배치</button>
     <button onclick="saveNames()">이름 저장</button>
     <button onclick="loadNames()">불러오기</button>
-    <input id="loadKey" type="text" placeholder="불러올 코드 입력" style="margin-top:10px; width: 200px;" />
+    <input id="loadKey" type="text" placeholder="불러올 코드 입력" style="width: 200px;" />
+
+    <div class="pdf-options">
+      <label><input type="checkbox" id="pdfIncludeImage"> 이미지 포함</label>
+      <button onclick="downloadPDF()">PDF 저장</button>
+    </div>
   </div>
 
   <div class="seat-section">
@@ -103,16 +138,19 @@
 
     function saveNames() {
       const raw = document.getElementById('nameInput').value;
+      const gridData = document.getElementById('seatGrid').innerHTML;
       const key = generateKey();
-      localStorage.setItem(`names_${key}`, raw);
+      localStorage.setItem(`names_${key}`, JSON.stringify({ raw, gridData }));
       alert(`이름이 저장되었습니다. 불러오기 코드: ${key}`);
     }
 
     function loadNames() {
       const key = document.getElementById('loadKey').value.trim();
-      const raw = localStorage.getItem(`names_${key}`);
-      if (raw) {
+      const data = localStorage.getItem(`names_${key}`);
+      if (data) {
+        const { raw, gridData } = JSON.parse(data);
         document.getElementById('nameInput').value = raw;
+        document.getElementById('seatGrid').innerHTML = gridData;
         alert(`불러오기 완료: ${key}`);
       } else {
         alert('해당 코드로 저장된 데이터가 없습니다.');
@@ -124,6 +162,7 @@
         .split(/[\n,]/).map(n => n.trim()).filter(n => n);
       const rows = parseInt(document.getElementById('rowCount').value);
       const cols = parseInt(document.getElementById('colCount').value);
+      const direction = document.getElementById('backDirection').value;
 
       const grid = Array.from({ length: rows }, () => Array(cols).fill(null));
       const assigned = new Set(Object.values(fixedSeats));
@@ -135,8 +174,10 @@
         grid[r][c] = fixedSeats[key];
       }
 
-      outer: for (let i = 0; i < rows; i++) {
-        for (let j = 0; j < cols; j++) {
+      for (let i = rows - 1; i >= 0; i--) {
+        const range = [...Array(cols).keys()];
+        const colIndices = direction === 'right' ? range.reverse() : range;
+        for (let j of colIndices) {
           const key = `${i}-${j}`;
           if (!fixedSeats[key] && remain.length > 0) {
             grid[i][j] = remain.pop();
@@ -161,17 +202,21 @@
           const name = grid[i][j];
           div.textContent = name || '';
 
-          if (name && imageMap[name]) {
+          if (name && imageMap[name] && document.getElementById('pdfIncludeImage').checked) {
             const img = document.createElement('img');
             img.src = imageMap[name];
+            img.style.width = '30px';
+            img.style.height = '30px';
+            img.style.position = 'absolute';
+            img.style.top = '-15px';
+            img.style.right = '-15px';
+            img.style.borderRadius = '50%';
             div.appendChild(img);
           }
 
           div.onclick = () => {
             if (fixedSeats[key]) {
               delete fixedSeats[key];
-              div.classList.remove('fixed');
-              div.textContent = '';
               assignSeats();
             } else {
               const name = prompt('고정할 학생 이름을 입력하세요');
@@ -199,6 +244,28 @@
         const j = Math.floor(Math.random() * (i + 1));
         [arr[i], arr[j]] = [arr[j], arr[i]];
       }
+    }
+
+    async function downloadPDF() {
+      const includeImage = document.getElementById('pdfIncludeImage').checked;
+      const target = document.getElementById('seatGrid');
+      const canvas = await html2canvas(target);
+      const imgData = canvas.toDataURL('image/png');
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF();
+      const width = pdf.internal.pageSize.getWidth();
+      const height = pdf.internal.pageSize.getHeight();
+
+      if (includeImage) {
+        pdf.addImage(imgData, 'PNG', 10, 10, width - 20, 0);
+      } else {
+        const text = names.join('\n');
+        pdf.text(text, 10, 10);
+      }
+
+      const date = new Date().toISOString().slice(0, 10);
+      pdf.save(`자리배치_${date}.pdf`);
     }
   </script>
 </body>

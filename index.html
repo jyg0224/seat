@@ -36,6 +36,11 @@
       border: 2px solid #6699cc;
       border-radius: 8px;
       position: relative;
+      cursor: pointer;
+    }
+    .seat.fixed {
+      background-color: #ffc;
+      font-weight: bold;
     }
     .seat img {
       width: 30px;
@@ -44,6 +49,14 @@
       top: -15px;
       right: -15px;
       border-radius: 50%;
+    }
+    .desk {
+      grid-column: span 2;
+      height: 60px;
+      background-image: url('https://cdn-icons-png.flaticon.com/512/167/167707.png');
+      background-size: cover;
+      background-position: center;
+      border-radius: 12px;
     }
   </style>
 </head>
@@ -60,13 +73,12 @@
     <label>열 수:</label>
     <input type="number" id="colCount" value="6" />
 
-    <label>고정 자리 입력 (예: 김민수:2-3):</label>
-    <textarea id="fixedSeats" rows="2"></textarea>
-
     <label>학생 이미지 업로드 (파일명은 이름과 일치):</label>
     <input type="file" id="imageUpload" multiple accept="image/*" />
 
     <button onclick="assignSeats()">자리 배치</button>
+    <button onclick="saveNames()">이름 저장</button>
+    <button onclick="loadNames()">불러오기</button>
   </div>
 
   <div class="seat-section">
@@ -75,6 +87,8 @@
 
   <script>
     let imageMap = {};
+    let fixedSeats = {};
+    let names = [];
 
     document.getElementById('imageUpload').addEventListener('change', (e) => {
       [...e.target.files].forEach(file => {
@@ -87,57 +101,95 @@
       });
     });
 
+    function saveNames() {
+      const raw = document.getElementById('nameInput').value;
+      localStorage.setItem('savedNames', raw);
+      alert('이름 저장 완료');
+    }
+
+    function loadNames() {
+      const raw = localStorage.getItem('savedNames');
+      if (raw) {
+        document.getElementById('nameInput').value = raw;
+      }
+    }
+
     function assignSeats() {
-      const names = document.getElementById('nameInput').value
-        .split(/[,\n]/).map(n => n.trim()).filter(n => n);
-      const fixed = document.getElementById('fixedSeats').value
-        .split(/\n/).map(line => line.trim()).filter(line => line);
+      names = document.getElementById('nameInput').value
+        .split(/[\n,]/).map(n => n.trim()).filter(n => n);
       const rows = parseInt(document.getElementById('rowCount').value);
       const cols = parseInt(document.getElementById('colCount').value);
 
-      const seatGrid = Array.from({ length: rows }, () => Array(cols).fill(null));
-      const assigned = new Set();
+      const grid = Array.from({ length: rows }, () => Array(cols).fill(null));
+      const assigned = new Set(Object.values(fixedSeats));
+      const remain = names.filter(n => !assigned.has(n));
+      shuffleArray(remain);
 
-      fixed.forEach(entry => {
-        const [name, pos] = entry.split(':');
-        const [r, c] = pos.split('-').map(Number);
-        if (r && c && name) {
-          seatGrid[r - 1][c - 1] = name;
-          assigned.add(name);
-        }
-      });
-
-      const remaining = names.filter(n => !assigned.has(n));
-      shuffleArray(remaining);
+      for (let key in fixedSeats) {
+        const [r, c] = key.split('-').map(Number);
+        grid[r][c] = fixedSeats[key];
+      }
 
       outer: for (let i = 0; i < rows; i++) {
         for (let j = 0; j < cols; j++) {
-          if (!seatGrid[i][j] && remaining.length > 0) {
-            seatGrid[i][j] = remaining.pop();
+          const key = `${i}-${j}`;
+          if (!fixedSeats[key] && remain.length > 0) {
+            grid[i][j] = remain.pop();
           }
         }
       }
-
-      renderGrid(seatGrid);
+      renderGrid(grid);
     }
 
     function renderGrid(grid) {
       const gridContainer = document.getElementById('seatGrid');
       gridContainer.innerHTML = '';
       gridContainer.style.gridTemplateColumns = `repeat(${grid[0].length}, 90px)`;
-      grid.forEach(row => {
-        row.forEach(name => {
-          const seat = document.createElement('div');
-          seat.className = 'seat';
-          seat.textContent = name || '';
+
+      for (let i = 0; i < grid.length; i++) {
+        for (let j = 0; j < grid[0].length; j++) {
+          const div = document.createElement('div');
+          const key = `${i}-${j}`;
+
+          if (i === 0 && j === 2) {
+            const desk = document.createElement('div');
+            desk.className = 'desk';
+            desk.style.gridColumn = 'span 2';
+            gridContainer.appendChild(desk);
+            j++; continue;
+          }
+
+          div.className = 'seat';
+          if (fixedSeats[key]) div.classList.add('fixed');
+          const name = grid[i][j];
+          div.textContent = name || '';
+
           if (name && imageMap[name]) {
             const img = document.createElement('img');
             img.src = imageMap[name];
-            seat.appendChild(img);
+            div.appendChild(img);
           }
-          gridContainer.appendChild(seat);
-        });
-      });
+
+          div.onclick = () => {
+            if (fixedSeats[key]) {
+              delete fixedSeats[key];
+              div.classList.remove('fixed');
+              div.textContent = '';
+              assignSeats();
+            } else {
+              const name = prompt('고정할 학생 이름을 입력하세요');
+              if (name && names.includes(name) && !Object.values(fixedSeats).includes(name)) {
+                fixedSeats[key] = name;
+                assignSeats();
+              } else {
+                alert('이름이 없거나 이미 배정됨');
+              }
+            }
+          };
+
+          gridContainer.appendChild(div);
+        }
+      }
     }
 
     function shuffleArray(arr) {

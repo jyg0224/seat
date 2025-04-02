@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>자리바꾸기</title>
+  <title>랜덤 자리바꾸기</title>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
     import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
@@ -29,6 +29,8 @@
       document.getElementById('saveBtn').addEventListener('click', saveToFirebase);
       document.getElementById('loadBtn').addEventListener('click', loadFromFirebase);
       document.getElementById('assignBtn').addEventListener('click', assignSeats);
+      document.getElementById('imgUpload').addEventListener('change', handleImageUpload);
+      document.getElementById('pdfBtn').addEventListener('click', savePdf);
     }
 
     function generateCode() {
@@ -65,6 +67,38 @@
       } else {
         alert('데이터가 존재하지 않습니다.');
       }
+    }
+
+    function handleImageUpload(e) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        document.getElementById('uploadedImage').src = evt.target.result;
+        document.getElementById('uploadedImage').style.display = 'block';
+      }
+      reader.readAsDataURL(file);
+    }
+
+    function savePdf() {
+      const includeImage = document.getElementById('includeImage').checked;
+      const seatArea = document.getElementById('seatGrid').cloneNode(true);
+      const wrapper = document.createElement('div');
+      wrapper.appendChild(seatArea);
+
+      if (includeImage) {
+        const img = document.getElementById('uploadedImage').cloneNode();
+        img.style.maxWidth = '300px';
+        wrapper.appendChild(document.createElement('hr'));
+        wrapper.appendChild(img);
+      }
+
+      const opt = {
+        margin: 1,
+        filename: '자리배치.pdf',
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+      html2pdf().from(wrapper).set(opt).save();
     }
 
     function assignSeats() {
@@ -138,6 +172,7 @@
       }
     }
   </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -190,10 +225,21 @@
       font-size: 20px;
       margin-top: 10px;
     }
+    #uploadedImage {
+      display: none;
+      max-width: 300px;
+      margin-top: 10px;
+    }
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      margin-top: 40px;
+      color: #555;
+    }
   </style>
 </head>
 <body>
-  <h1>자리바꾸기 웹앱</h1>
+  <h1>랜덤 자리바꾸기</h1>
   <div class="container">
     <div class="left-panel">
       <label>학생 이름 입력 (쉼표 또는 줄바꿈):</label>
@@ -214,9 +260,17 @@
       <button id="assignBtn">자리 배치</button>
       <button id="saveBtn">자리 저장 (인증코드 생성)</button>
       <button id="loadBtn">자리 불러오기</button>
+
+      <label>이미지 업로드 (PDF에 포함 가능):</label>
+      <input type="file" id="imgUpload" accept="image/*">
+      <input type="checkbox" id="includeImage"> 이미지 포함해서 PDF 저장
+      <button id="pdfBtn">PDF 저장</button>
+
+      <img id="uploadedImage" src="">
     </div>
 
     <div id="seatGrid"></div>
   </div>
+  <div class="footer">Made by 조영건</div>
 </body>
 </html>

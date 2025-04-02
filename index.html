@@ -2,250 +2,192 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>랜덤 자리바꾸기</title>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-database.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyCFE25bdLM9PN8t7IPDzeu9w8VVa7TykLU",
-      authDomain: "randomseat-fe53e.firebaseapp.com",
-      databaseURL: "https://randomseat-fe53e-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "randomseat-fe53e",
-      storageBucket: "randomseat-fe53e.appspot.com",
-      messagingSenderId: "1083859443221",
-      appId: "1:1083859443221:web:2a6c07241e344da2d9b81c"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
-    let fixedSeats = {};
-    let names = [];
-
-    window.onload = () => {
-      document.getElementById('saveBtn').addEventListener('click', saveToFirebase);
-      document.getElementById('loadBtn').addEventListener('click', loadFromFirebase);
-      document.getElementById('assignBtn').addEventListener('click', assignSeats);
-      document.getElementById('pdfBtn').addEventListener('click', downloadPDF);
-    }
-
-    function generateCode() {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-      return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-    }
-
-    async function saveToFirebase() {
-      const code = generateCode();
-      const data = {
-        nameInput: document.getElementById('nameInput').value,
-        row: document.getElementById('rowCount').value,
-        col: document.getElementById('colCount').value,
-        dir: document.getElementById('direction').value,
-        fixed: fixedSeats
-      };
-      await set(ref(db, 'seats/' + code), data);
-      alert(`저장되었습니다. 인증코드: ${code}`);
-    }
-
-    async function loadFromFirebase() {
-      const code = prompt('인증코드를 입력하세요');
-      const snapshot = await get(child(ref(db), 'seats/' + code));
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        document.getElementById('nameInput').value = data.nameInput;
-        document.getElementById('rowCount').value = data.row;
-        document.getElementById('colCount').value = data.col;
-        document.getElementById('direction').value = data.dir;
-        fixedSeats = data.fixed || {};
-        assignSeats();
-      } else {
-        alert('데이터가 존재하지 않습니다.');
-      }
-    }
-
-    function assignSeats() {
-      names = document.getElementById('nameInput').value.split(/[\n,]/).map(n => n.trim()).filter(n => n);
-      const rows = parseInt(document.getElementById('rowCount').value);
-      const cols = parseInt(document.getElementById('colCount').value);
-      const direction = document.getElementById('direction').value;
-
-      const grid = Array.from({ length: rows }, () => Array(cols).fill(null));
-      const assigned = new Set(Object.values(fixedSeats));
-      const remain = names.filter(n => !assigned.has(n));
-      shuffleArray(remain);
-
-      for (let key in fixedSeats) {
-        const [r, c] = key.split('-').map(Number);
-        grid[r][c] = fixedSeats[key];
-      }
-
-      for (let i = rows - 1; i >= 0; i--) {
-        const colRange = direction === 'right' ? [...Array(cols).keys()].reverse() : [...Array(cols).keys()];
-        for (let j of colRange) {
-          const key = `${i}-${j}`;
-          if (!fixedSeats[key] && remain.length > 0) {
-            grid[i][j] = remain.pop();
-          }
-        }
-      }
-      renderGrid(grid);
-    }
-
-    function renderGrid(grid) {
-      const seatGrid = document.getElementById('seatGrid');
-      seatGrid.innerHTML = '';
-      seatGrid.style.gridTemplateColumns = `repeat(${grid[0].length}, 90px)`;
-
-      for (let i = 0; i < grid.length; i++) {
-        for (let j = 0; j < grid[0].length; j++) {
-          const key = `${i}-${j}`;
-          const div = document.createElement('div');
-          div.className = 'seat';
-          if (fixedSeats[key]) div.classList.add('fixed');
-          div.textContent = grid[i][j] || '';
-
-          div.onclick = () => {
-            if (fixedSeats[key]) {
-              delete fixedSeats[key];
-              assignSeats();
-            } else {
-              const name = prompt('고정할 학생 이름을 입력하세요');
-              if (name && names.includes(name) && !Object.values(fixedSeats).includes(name)) {
-                fixedSeats[key] = name;
-                assignSeats();
-              } else {
-                alert('이름이 없거나 이미 고정됨');
-              }
-            }
-          }
-          seatGrid.appendChild(div);
-        }
-      }
-      const label = document.createElement('div');
-      label.textContent = '교탁';
-      label.className = 'desk-label';
-      seatGrid.appendChild(label);
-    }
-
-    function shuffleArray(arr) {
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-    }
-
-    function downloadPDF() {
-      window.print();
-    }
-  </script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #e6fff3;
-      margin: 0;
-      padding: 20px;
-    }
-    h1 {
-      text-align: center;
-      color: #2b6c4f;
+      background-color: #e6f9ee;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: space-between;
+      padding: 20px 40px;
     }
     .container {
       display: flex;
-      gap: 10cm;
-      align-items: flex-start;
+      flex-direction: column;
+      gap: 10px;
     }
-    .left-panel {
-      width: 300px;
+    textarea, input, select, button {
+      font-size: 14px;
+      padding: 4px;
+      width: 200px;
     }
-    .left-panel textarea, .left-panel input, .left-panel select, .left-panel button {
-      width: 100%;
-      margin-bottom: 10px;
-      padding: 8px;
-    }
-    #seatGrid {
+    .seat-grid {
       display: grid;
       gap: 10px;
-      margin-top: 20px;
+      justify-content: center;
+      margin-top: 30px;
     }
     .seat {
       width: 80px;
       height: 60px;
-      background-color: #d4f4dd;
+      background-color: #ccf0dd;
       display: flex;
       justify-content: center;
       align-items: center;
-      border: 2px solid #6fcf97;
+      border: 2px solid #66aa88;
       border-radius: 8px;
-      position: relative;
-      cursor: pointer;
     }
     .fixed {
-      background-color: #fffb8f;
-      font-weight: bold;
+      background-color: #99e6cc;
     }
-    .desk-label {
-      grid-column: span 6;
+    h1 {
       text-align: center;
-      font-weight: bold;
-      color: #2b6c4f;
-      font-size: 20px;
-      margin-top: 10px;
+      color: #207755;
     }
-    .footer {
-      text-align: center;
-      font-size: 12px;
-      margin-top: 40px;
-      color: #555;
+    .right-panel {
+      width: 400px;
     }
-    .instruction {
-      background: #f0e0b0;
-      padding: 15px;
+    .guide {
+      background: #f3e5b5;
+      padding: 20px;
       font-size: 14px;
-      line-height: 1.6;
-      width: 500px;
+      border-radius: 10px;
+    }
+    #footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #666;
+      font-size: 12px;
     }
   </style>
 </head>
 <body>
-  <h1>랜덤 자리바꾸기</h1>
   <div class="container">
-    <div class="left-panel">
-      <label>학생 이름 입력 (쉼표 또는 줄바꿈):</label>
-      <textarea id="nameInput" rows="5"></textarea>
-
-      <label>행 수:</label>
-      <input type="number" id="rowCount" value="5">
-
-      <label>열 수:</label>
-      <input type="number" id="colCount" value="6">
-
-      <label>뒷줄 채우기 방향:</label>
+    <label>학생 이름 입력 (쉼표 또는 줄바꿈):<br>
+      <textarea id="names" rows="8"></textarea>
+    </label>
+    <label>행 수: <br><input id="rows" type="number" value="5"></label>
+    <label>열 수: <br><input id="cols" type="number" value="6"></label>
+    <label>뒷줄 채우기 방향:<br>
       <select id="direction">
         <option value="left">왼쪽부터</option>
         <option value="right">오른쪽부터</option>
       </select>
+    </label>
+    <button onclick="assignSeats()">자리 배치</button>
+    <button onclick="saveData()">자리 저장 (인증코드 생성)</button>
+    <button onclick="loadData()">자리 불러오기</button>
+    <button onclick="exportPDF()">PDF 저장</button>
+    <div id="footer">Made by 조영건</div>
+  </div>
 
-      <button id="assignBtn">자리 배치</button>
-      <button id="saveBtn">자리 저장 (인증코드 생성)</button>
-      <button id="loadBtn">자리 불러오기</button>
-      <button id="pdfBtn">PDF 저장</button>
-    </div>
+  <div id="seats" class="seat-grid"></div>
 
-    <div id="seatGrid"></div>
-
-    <div class="instruction">
-      <strong>사용 설명서</strong><br>
+  <div class="right-panel">
+    <div class="guide">
+      <b>사용 설명서</b><br>
       1. 학생 이름을 쉼표 또는 줄바꿈을 통해 입력합니다.<br>
       2. 행 수와 열 수를 입력합니다.<br>
       3. 맨 뒷자리를 왼쪽부터 채울지, 오른쪽부터 채울지 입력합니다.<br>
-      4. 자리 배치를 눌러 랜덤으로 배치합니다.(특정 자리를 원하는 학생이 있으면 학생 자리를 클릭해 학생 이름 입력이 가능합니다.<br>
+      4. 자리 배치를 눌러 랜덤으로 배치합니다.<br>
       5. 배치를 완성한 후 자리 저장을 누르면 인증 코드가 부여됩니다.<br>
-      6. 부여된 인증코드를 다음번에 또 입력하면 학생 이름을 비롯한 저장된 정보가 뜹니다.<br>
+      6. 부여된 인증코드를 다음번에 입력하면 학생 이름을 비롯한 저장된 정보가 뜹니다.<br>
       7. 이를 활용해 다음 번 자리 배치를 할 때에 자리 불러오기 - 인증 코드만 입력해 저장된 데이터를 불러옵니다.
     </div>
   </div>
-  <div class="footer">Made by 조영건</div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCF...", // 여기에 실제 API KEY 입력
+      authDomain: "...",
+      databaseURL: "https://...firebaseio.com",
+      projectId: "..."
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function assignSeats() {
+      const nameInput = document.getElementById("names").value.trim();
+      const direction = document.getElementById("direction").value;
+      let names = nameInput.split(/[\n,]+/).map(n => n.trim()).filter(n => n);
+      const rows = parseInt(document.getElementById("rows").value);
+      const cols = parseInt(document.getElementById("cols").value);
+
+      while (names.length < rows * cols) names.push("");
+      names = names.sort(() => Math.random() - 0.5);
+
+      const seatGrid = document.getElementById("seats");
+      seatGrid.innerHTML = "";
+      seatGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+      for (let r = 0; r < rows; r++) {
+        let row = [];
+        for (let c = 0; c < cols; c++) {
+          let idx = direction === "left" ? r * cols + c : r * cols + (cols - 1 - c);
+          row.push(`<div class='seat'>${names[idx]}</div>`);
+        }
+        seatGrid.innerHTML += row.join('');
+      }
+
+      const lectern = document.createElement("div");
+      lectern.style.gridColumn = `span ${cols}`;
+      lectern.style.textAlign = "center";
+      lectern.style.fontWeight = "bold";
+      lectern.style.marginTop = "10px";
+      lectern.innerText = "교탁";
+      seatGrid.appendChild(lectern);
+    }
+
+    function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF();
+      const seats = document.querySelectorAll('.seat');
+      let x = 10, y = 20, count = 0;
+
+      seats.forEach(seat => {
+        const text = seat.textContent.trim();
+        pdf.setDrawColor(100);
+        pdf.rect(x, y, 30, 20);
+        pdf.text(text, x + 3, y + 12);
+        x += 35;
+        count++;
+        if (count % 6 === 0) { x = 10; y += 25; }
+      });
+
+      y += 15;
+      pdf.setFont(undefined, 'bold');
+      pdf.text("교탁", 100, y);
+
+      pdf.save("자리배치.pdf");
+    }
+
+    function saveData() {
+      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const data = {
+        names: document.getElementById("names").value,
+        rows: document.getElementById("rows").value,
+        cols: document.getElementById("cols").value,
+        direction: document.getElementById("direction").value
+      };
+      db.ref("seats/" + code).set(data).then(() => alert("저장됨! 인증코드: " + code));
+    }
+
+    function loadData() {
+      const code = prompt("인증코드를 입력하세요").toUpperCase();
+      db.ref("seats/" + code).get().then(snapshot => {
+        const data = snapshot.val();
+        if (data) {
+          document.getElementById("names").value = data.names;
+          document.getElementById("rows").value = data.rows;
+          document.getElementById("cols").value = data.cols;
+          document.getElementById("direction").value = data.direction;
+          assignSeats();
+        } else alert("해당 코드의 데이터가 없습니다.");
+      });
+    }
+  </script>
 </body>
 </html>

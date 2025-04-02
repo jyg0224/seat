@@ -137,26 +137,17 @@
     }
 
     function downloadPDF() {
-      const content = document.getElementById('seatGrid').cloneNode(true);
-      const originalFooter = document.querySelector('.footer');
-      if (originalFooter) originalFooter.style.display = 'none';
-
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write('<html><head><title>자리 배치 결과</title><style>');
-      printWindow.document.write(`
-        body { font-family: 'Segoe UI', sans-serif; background-color: #fff; margin: 20px; }
-        .seat { width: 80px; height: 60px; background-color: #d4f4dd; display: inline-flex; justify-content: center; align-items: center; border: 2px solid #6fcf97; border-radius: 8px; margin: 5px; }
-        .desk-label { text-align: center; font-weight: bold; color: #2b6c4f; font-size: 20px; margin-top: 20px; }
-      `);
-      printWindow.document.write('</style></head><body>');
-      printWindow.document.body.appendChild(content);
-      printWindow.document.write('</body></html>');
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
-      printWindow.close();
-
-      if (originalFooter) originalFooter.style.display = '';
+      import('https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js').then(() => {
+        const element = document.getElementById('seatGrid');
+        const opt = {
+          margin: 0.5,
+          filename: '자리배치.pdf',
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+        html2pdf().set(opt).from(element).save();
+      });
     }
   </script>
   <style>
@@ -172,7 +163,6 @@
     }
     .container {
       display: flex;
-      justify-content: flex-start;
       gap: 5cm;
       align-items: flex-start;
     }
@@ -187,7 +177,8 @@
     #seatGrid {
       display: grid;
       gap: 10px;
-      margin-top: 20px;
+      margin-left: 20cm;
+      margin-top: 0;
     }
     .seat {
       width: 80px;
@@ -225,9 +216,8 @@
       font-size: 14px;
       line-height: 1.6;
       width: 500px;
-      position: absolute;
-      left: 360px;
-      top: 130px;
+      margin-left: 5cm;
+      margin-top: 0;
     }
   </style>
 </head>

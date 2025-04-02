@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>랜덤 자리바꾸기</title>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
@@ -163,21 +163,31 @@
     }
     .container {
       display: flex;
-      gap: 10cm;
-      align-items: flex-start;
+      flex-direction: column;
+      gap: 20px;
+    }
+    @media (min-width: 768px) {
+      .container {
+        flex-direction: row;
+        gap: 10cm;
+        align-items: flex-start;
+      }
     }
     .left-panel {
-      width: 300px;
+      width: 100%;
+      max-width: 300px;
     }
     .left-panel textarea, .left-panel input, .left-panel select, .left-panel button {
       width: 100%;
       margin-bottom: 10px;
       padding: 8px;
+      box-sizing: border-box;
     }
     #seatGrid {
       display: grid;
       gap: 10px;
       margin-top: 20px;
+      justify-content: center;
     }
     .seat {
       width: 80px;

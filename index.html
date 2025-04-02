@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>자리바꾸기 웹앱</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #e6f0ff;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .input-section, .seat-section {
+      margin: 20px 0;
+    }
+    textarea, input[type=number], input[type=text] {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    .seat-grid {
+      display: grid;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    .seat {
+      width: 80px;
+      height: 60px;
+      background-color: #cce0ff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: 2px solid #6699cc;
+      border-radius: 8px;
+      position: relative;
+    }
+    .seat img {
+      width: 30px;
+      height: 30px;
+      position: absolute;
+      top: -15px;
+      right: -15px;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+  <h1>자리바꾸기 웹앱</h1>
+
+  <div class="input-section">
+    <label>학생 이름 입력 (쉼표 또는 줄바꿈):</label>
+    <textarea id="nameInput" rows="4"></textarea>
+
+    <label>행 수:</label>
+    <input type="number" id="rowCount" value="5" />
+
+    <label>열 수:</label>
+    <input type="number" id="colCount" value="6" />
+
+    <label>고정 자리 입력 (예: 김민수:2-3):</label>
+    <textarea id="fixedSeats" rows="2"></textarea>
+
+    <label>학생 이미지 업로드 (파일명은 이름과 일치):</label>
+    <input type="file" id="imageUpload" multiple accept="image/*" />
+
+    <button onclick="assignSeats()">자리 배치</button>
+  </div>
+
+  <div class="seat-section">
+    <div id="seatGrid" class="seat-grid"></div>
+  </div>
+
+  <script>
+    let imageMap = {};
+
+    document.getElementById('imageUpload').addEventListener('change', (e) => {
+      [...e.target.files].forEach(file => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const name = file.name.split('.')[0];
+          imageMap[name] = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+
+    function assignSeats() {
+      const names = document.getElementById('nameInput').value
+        .split(/[,\n]/).map(n => n.trim()).filter(n => n);
+      const fixed = document.getElementById('fixedSeats').value
+        .split(/\n/).map(line => line.trim()).filter(line => line);
+      const rows = parseInt(document.getElementById('rowCount').value);
+      const cols = parseInt(document.getElementById('colCount').value);
+
+      const seatGrid = Array.from({ length: rows }, () => Array(cols).fill(null));
+      const assigned = new Set();
+
+      fixed.forEach(entry => {
+        const [name, pos] = entry.split(':');
+        const [r, c] = pos.split('-').map(Number);
+        if (r && c && name) {
+          seatGrid[r - 1][c - 1] = name;
+          assigned.add(name);
+        }
+      });
+
+      const remaining = names.filter(n => !assigned.has(n));
+      shuffleArray(remaining);
+
+      outer: for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+          if (!seatGrid[i][j] && remaining.length > 0) {
+            seatGrid[i][j] = remaining.pop();
+          }
+        }
+      }
+
+      renderGrid(seatGrid);
+    }
+
+    function renderGrid(grid) {
+      const gridContainer = document.getElementById('seatGrid');
+      gridContainer.innerHTML = '';
+      gridContainer.style.gridTemplateColumns = `repeat(${grid[0].length}, 90px)`;
+      grid.forEach(row => {
+        row.forEach(name => {
+          const seat = document.createElement('div');
+          seat.className = 'seat';
+          seat.textContent = name || '';
+          if (name && imageMap[name]) {
+            const img = document.createElement('img');
+            img.src = imageMap[name];
+            seat.appendChild(img);
+          }
+          gridContainer.appendChild(seat);
+        });
+      });
+    }
+
+    function shuffleArray(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+    }
+  </script>
+</body>
+</html>

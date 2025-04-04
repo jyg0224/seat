@@ -23,6 +23,8 @@
 
     let fixedSeats = {};
     let names = [];
+    // 추가: 랜덤 배치된 최종 좌석 정보를 저장할 전역 변수
+    let currentGrid = [];
 
     window.onload = () => {
       document.getElementById('saveBtn').addEventListener('click', saveToFirebase);
@@ -43,14 +45,19 @@
         row: document.getElementById('rowCount').value,
         col: document.getElementById('colCount').value,
         dir: document.getElementById('direction').value,
-        fixed: fixedSeats
+        fixed: fixedSeats,
+        // 추가: 최종 랜덤 배치 결과도 같이 저장
+        assignedGrid: currentGrid
       };
+
       await set(ref(db, 'seats/' + code), data);
       alert(`저장되었습니다. 인증코드: ${code}`);
     }
 
     async function loadFromFirebase() {
       const code = prompt('인증코드를 입력하세요');
+      if (!code) return; // 사용자가 취소하거나 잘못 입력했을 때 대비
+
       const snapshot = await get(child(ref(db), 'seats/' + code));
       if (snapshot.exists()) {
         const data = snapshot.val();
@@ -59,14 +66,25 @@
         document.getElementById('colCount').value = data.col;
         document.getElementById('direction').value = data.dir;
         fixedSeats = data.fixed || {};
-        assignSeats();
+
+        // 만약 이미 랜덤 배치가 저장되어 있다면 그대로 반영
+        if (data.assignedGrid && Array.isArray(data.assignedGrid)) {
+          currentGrid = data.assignedGrid;
+          renderGrid(currentGrid);
+        } else {
+          // assignedGrid가 없으면 기존 로직대로 재할당
+          assignSeats();
+        }
       } else {
         alert('데이터가 존재하지 않습니다.');
       }
     }
 
     function assignSeats() {
-      names = document.getElementById('nameInput').value.split(/[\n,]/).map(n => n.trim()).filter(n => n);
+      names = document.getElementById('nameInput').value.split(/[\n,]/)
+        .map(n => n.trim())
+        .filter(n => n);
+
       const rows = parseInt(document.getElementById('rowCount').value);
       const cols = parseInt(document.getElementById('colCount').value);
       const direction = document.getElementById('direction').value;
@@ -82,7 +100,11 @@
       }
 
       for (let i = rows - 1; i >= 0; i--) {
-        const colRange = direction === 'right' ? [...Array(cols).keys()].reverse() : [...Array(cols).keys()];
+        // 왼쪽부터냐 오른쪽부터냐에 따라 순회 방향 다르게
+        const colRange = (direction === 'right')
+          ? [...Array(cols).keys()].reverse()
+          : [...Array(cols).keys()];
+
         for (let j of colRange) {
           const key = `${i}-${j}`;
           if (!fixedSeats[key] && remain.length > 0) {
@@ -90,6 +112,9 @@
           }
         }
       }
+
+      // 전역 변수에 최종 배치 저장
+      currentGrid = grid;
       renderGrid(grid);
     }
 
@@ -107,10 +132,12 @@
           div.textContent = grid[i][j] || '';
 
           div.onclick = () => {
+            // 이미 고정된 자리라면 해제
             if (fixedSeats[key]) {
               delete fixedSeats[key];
               assignSeats();
             } else {
+              // 새로 고정
               const name = prompt('고정할 학생 이름을 입력하세요');
               if (name && names.includes(name) && !Object.values(fixedSeats).includes(name)) {
                 fixedSeats[key] = name;
@@ -119,10 +146,11 @@
                 alert('이름이 없거나 이미 고정됨');
               }
             }
-          }
+          };
           seatGrid.appendChild(div);
         }
       }
+
       const label = document.createElement('div');
       label.textContent = '교탁';
       label.className = 'desk-label';
@@ -137,19 +165,21 @@
     }
 
     function downloadPDF() {
-      import('https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js').then(() => {
-        const element = document.createElement('div');
-        const clone = document.getElementById('seatGrid').cloneNode(true);
-        element.appendChild(clone);
-        const opt = {
-          margin: 0.5,
-          filename: '자리배치.pdf',
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2 },
-          jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-        };
-        html2pdf().set(opt).from(element).save();
-      });
+      import('https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js')
+        .then(() => {
+          const element = document.createElement('div');
+          const clone = document.getElementById('seatGrid').cloneNode(true);
+          element.appendChild(clone);
+
+          const opt = {
+            margin: 0.5,
+            filename: '자리배치.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+          };
+          html2pdf().set(opt).from(element).save();
+        });
     }
   </script>
   <style>
@@ -259,10 +289,10 @@
         1. 학생 이름을 쉼표 또는 줄바꿈을 통해 입력합니다.<br>
         2. 행 수와 열 수를 입력합니다.<br>
         3. 맨 뒷자리를 왼쪽부터 채울지, 오른쪽부터 채울지 입력합니다.<br>
-        4. 자리 배치를 눌러 랜덤으로 배치합니다.(특정 자리를 원하는 학생이 있으면 학생 자리를 클릭해 학생 이름 입력이 가능합니다.<br>
+        4. 자리 배치를 눌러 랜덤으로 배치합니다. (특정 자리를 원하는 학생이 있으면 학생 자리를 클릭해 학생 이름 입력이 가능합니다.)<br>
         5. 배치를 완성한 후 자리 저장을 누르면 인증 코드가 부여됩니다.<br>
         6. 부여된 인증코드를 다음번에 또 입력하면 학생 이름을 비롯한 저장된 정보가 뜹니다.<br>
-        7. 이를 활용해 다음 번 자리 배치를 할 때에 자리 불러오기 - 인증 코드만 입력해 저장된 데이터를 불러옵니다.
+        7. 이를 활용해 다음 번 자리 배치를 할 때 자리 불러오기 → 인증 코드 입력으로 이전 배치를 그대로 혹은 수정해 새로 작성할 수 있습니다.
       </div>
     </div>
 

@@ -23,7 +23,6 @@
 
     let fixedSeats = {};
     let names = [];
-    // 추가: 랜덤 배치된 최종 좌석 정보를 저장할 전역 변수
     let currentGrid = [];
 
     window.onload = () => {
@@ -46,37 +45,42 @@
         col: document.getElementById('colCount').value,
         dir: document.getElementById('direction').value,
         fixed: fixedSeats,
-        // 추가: 최종 랜덤 배치 결과도 같이 저장
-        assignedGrid: currentGrid
+        assignedGridJson: JSON.stringify(currentGrid)
       };
-
       await set(ref(db, 'seats/' + code), data);
       alert(`저장되었습니다. 인증코드: ${code}`);
     }
 
     async function loadFromFirebase() {
       const code = prompt('인증코드를 입력하세요');
-      if (!code) return; // 사용자가 취소하거나 잘못 입력했을 때 대비
+      if (!code) return;
 
       const snapshot = await get(child(ref(db), 'seats/' + code));
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        document.getElementById('nameInput').value = data.nameInput;
-        document.getElementById('rowCount').value = data.row;
-        document.getElementById('colCount').value = data.col;
-        document.getElementById('direction').value = data.dir;
-        fixedSeats = data.fixed || {};
-
-        // 만약 이미 랜덤 배치가 저장되어 있다면 그대로 반영
-        if (data.assignedGrid && Array.isArray(data.assignedGrid)) {
-          currentGrid = data.assignedGrid;
-          renderGrid(currentGrid);
-        } else {
-          // assignedGrid가 없으면 기존 로직대로 재할당
-          assignSeats();
-        }
-      } else {
+      if (!snapshot.exists()) {
         alert('데이터가 존재하지 않습니다.');
+        return;
+      }
+      const data = snapshot.val();
+
+      // 입력 필드 복원
+      document.getElementById('nameInput').value = data.nameInput;
+      document.getElementById('rowCount').value = data.row;
+      document.getElementById('colCount').value = data.col;
+      document.getElementById('direction').value = data.dir;
+      fixedSeats = data.fixed || {};
+
+      // names 배열 갱신
+      names = data.nameInput
+        .split(/[\n,]/)
+        .map(n => n.trim())
+        .filter(n => n);
+
+      // 저장된 그리드가 있으면 JSON에서 파싱 후 렌더링
+      if (data.assignedGridJson) {
+        currentGrid = JSON.parse(data.assignedGridJson);
+        renderGrid(currentGrid);
+      } else {
+        assignSeats();
       }
     }
 
@@ -100,7 +104,6 @@
       }
 
       for (let i = rows - 1; i >= 0; i--) {
-        // 왼쪽부터냐 오른쪽부터냐에 따라 순회 방향 다르게
         const colRange = (direction === 'right')
           ? [...Array(cols).keys()].reverse()
           : [...Array(cols).keys()];
@@ -113,7 +116,6 @@
         }
       }
 
-      // 전역 변수에 최종 배치 저장
       currentGrid = grid;
       renderGrid(grid);
     }
@@ -132,12 +134,10 @@
           div.textContent = grid[i][j] || '';
 
           div.onclick = () => {
-            // 이미 고정된 자리라면 해제
             if (fixedSeats[key]) {
               delete fixedSeats[key];
               assignSeats();
             } else {
-              // 새로 고정
               const name = prompt('고정할 학생 이름을 입력하세요');
               if (name && names.includes(name) && !Object.values(fixedSeats).includes(name)) {
                 fixedSeats[key] = name;
@@ -276,7 +276,7 @@
       <label>뒷줄 채우기 방향:</label>
       <select id="direction">
         <option value="left">왼쪽부터</option>
-        <option value="right">오른쪽부터</option>
+        <option value="right" selected>오른쪽부터</option>
       </select>
 
       <button id="assignBtn">자리 배치</button>
@@ -291,8 +291,7 @@
         3. 맨 뒷자리를 왼쪽부터 채울지, 오른쪽부터 채울지 입력합니다.<br>
         4. 자리 배치를 눌러 랜덤으로 배치합니다. (특정 자리를 원하는 학생이 있으면 학생 자리를 클릭해 학생 이름 입력이 가능합니다.)<br>
         5. 배치를 완성한 후 자리 저장을 누르면 인증 코드가 부여됩니다.<br>
-        6. 부여된 인증코드를 다음번에 또 입력하면 학생 이름을 비롯한 저장된 정보가 뜹니다.<br>
-        7. 이를 활용해 다음 번 자리 배치를 할 때 자리 불러오기 → 인증 코드 입력으로 이전 배치를 그대로 혹은 수정해 새로 작성할 수 있습니다.
+        6. 부여된 인증코드를 다음번에 또 입력하면 저장된 배치를 그대로 불러옵니다.<br>
       </div>
     </div>
 
